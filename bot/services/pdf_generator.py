@@ -8,7 +8,7 @@ from bidi.algorithm import get_display
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm, mm
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.enums import TA_RIGHT, TA_CENTER
+from reportlab.lib.enums import TA_RIGHT, TA_LEFT, TA_CENTER
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle,
 )
@@ -21,6 +21,30 @@ from bot.database.models import User
 from bot.utils.text_helpers import generate_summary
 
 FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
+
+# Section headers by language
+SECTION_HEADERS = {
+    "ar": {
+        "summary": "الملخص المهني",
+        "experience": "الخبرات العملية",
+        "education": "التعليم",
+        "skills": "المهارات",
+        "languages": "اللغات",
+        "courses": "الدورات والشهادات",
+        "projects": "المشاريع",
+        "present": "حتى الآن",
+    },
+    "en": {
+        "summary": "Professional Summary",
+        "experience": "Work Experience",
+        "education": "Education",
+        "skills": "Skills",
+        "languages": "Languages",
+        "courses": "Certifications & Courses",
+        "projects": "Projects",
+        "present": "Present",
+    },
+}
 
 # Color palette
 PRIMARY = HexColor("#1a1a2e")
@@ -59,8 +83,9 @@ def _register_fonts() -> str:
     return "Helvetica"
 
 
-def _get_styles(font_name: str) -> dict:
+def _get_styles(font_name: str, lang: str = "ar") -> dict:
     bold_font = "ArabicBold" if font_name == "Arabic" else "Helvetica-Bold"
+    body_align = TA_RIGHT if lang == "ar" else TA_LEFT
 
     return {
         "name": ParagraphStyle(
@@ -95,7 +120,7 @@ def _get_styles(font_name: str) -> dict:
             fontName=bold_font,
             fontSize=13,
             textColor=PRIMARY,
-            alignment=TA_RIGHT,
+            alignment=body_align,
             spaceBefore=0,
             spaceAfter=6,
             leading=18,
@@ -105,7 +130,7 @@ def _get_styles(font_name: str) -> dict:
             fontName=font_name,
             fontSize=10,
             textColor=TEXT_DARK,
-            alignment=TA_RIGHT,
+            alignment=body_align,
             spaceAfter=4,
             leading=16,
         ),
@@ -114,7 +139,7 @@ def _get_styles(font_name: str) -> dict:
             fontName=bold_font,
             fontSize=10,
             textColor=TEXT_DARK,
-            alignment=TA_RIGHT,
+            alignment=body_align,
             spaceAfter=2,
             leading=16,
         ),
@@ -123,7 +148,7 @@ def _get_styles(font_name: str) -> dict:
             fontName=font_name,
             fontSize=9,
             textColor=TEXT_LIGHT,
-            alignment=TA_RIGHT,
+            alignment=body_align,
             spaceAfter=2,
             leading=13,
         ),
@@ -132,7 +157,7 @@ def _get_styles(font_name: str) -> dict:
             fontName=font_name,
             fontSize=10,
             textColor=TEXT_DARK,
-            alignment=TA_RIGHT,
+            alignment=body_align,
             spaceAfter=2,
             leading=15,
             leftIndent=15,
@@ -169,7 +194,9 @@ def _add_section_header(elements: list, title: str, styles: dict) -> None:
 async def generate_cv_pdf(user: User) -> str | None:
     try:
         font_name = _register_fonts()
-        styles = _get_styles(font_name)
+        lang = getattr(user, "cv_language", "ar") or "ar"
+        headers = SECTION_HEADERS.get(lang, SECTION_HEADERS["ar"])
+        styles = _get_styles(font_name, lang)
 
         safe_name = "".join(c for c in (user.full_name or "cv") if c.isalnum() or c in " _-")
         safe_name = safe_name.strip().replace(" ", "_") or "cv"
@@ -224,14 +251,14 @@ async def generate_cv_pdf(user: User) -> str | None:
         # ── Professional Summary ──
         summary = user.summary or generate_summary(user)
         if summary:
-            _add_section_header(elements, "الملخص المهني", styles)
+            _add_section_header(elements, headers["summary"], styles)
             elements.append(Paragraph(_escape(summary), styles["body"]))
 
         # ── Work Experience ──
         if user.experiences:
-            _add_section_header(elements, "الخبرات العملية", styles)
+            _add_section_header(elements, headers["experience"], styles)
             for i, exp in enumerate(user.experiences):
-                end = exp.end_date or "حتى الآن"
+                end = exp.end_date or headers["present"]
                 elements.append(
                     Paragraph(
                         _escape(f"{exp.title}  —  {exp.company}"),
@@ -260,7 +287,7 @@ async def generate_cv_pdf(user: User) -> str | None:
 
         # ── Education ──
         if user.educations:
-            _add_section_header(elements, "التعليم", styles)
+            _add_section_header(elements, headers["education"], styles)
             for i, edu in enumerate(user.educations):
                 elements.append(
                     Paragraph(
@@ -280,17 +307,17 @@ async def generate_cv_pdf(user: User) -> str | None:
 
         # ── Skills ──
         if user.skills:
-            _add_section_header(elements, "المهارات", styles)
+            _add_section_header(elements, headers["skills"], styles)
             elements.append(Paragraph(_escape(user.skills), styles["body"]))
 
         # ── Languages ──
         if user.languages:
-            _add_section_header(elements, "اللغات", styles)
+            _add_section_header(elements, headers["languages"], styles)
             elements.append(Paragraph(_escape(user.languages), styles["body"]))
 
         # ── Courses & Certifications ──
         if user.courses:
-            _add_section_header(elements, "الدورات والشهادات", styles)
+            _add_section_header(elements, headers["courses"], styles)
             for i, c in enumerate(user.courses):
                 parts = [c.name]
                 if c.provider:
@@ -310,7 +337,7 @@ async def generate_cv_pdf(user: User) -> str | None:
 
         # ── Projects ──
         if user.projects:
-            _add_section_header(elements, "المشاريع", styles)
+            _add_section_header(elements, headers["projects"], styles)
             for i, p in enumerate(user.projects):
                 elements.append(Paragraph(_escape(p.name), styles["body_bold"]))
                 if p.description:

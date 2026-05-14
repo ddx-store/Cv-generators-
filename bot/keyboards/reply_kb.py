@@ -12,6 +12,16 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     )
 
 
+def cv_language_kb() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="العربية 🇸🇦"), KeyboardButton(text="English 🇬🇧")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
+
 def skip_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="تخطي")]],

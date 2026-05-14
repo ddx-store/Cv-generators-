@@ -21,6 +21,7 @@ class User(Base):
     summary = Column(Text, nullable=True)
     skills = Column(Text, nullable=True)
     languages = Column(Text, nullable=True)
+    cv_language = Column(String(10), nullable=True, default="ar")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

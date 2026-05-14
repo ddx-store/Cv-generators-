@@ -3,7 +3,7 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from bot.states.cv_states import CVForm
-from bot.keyboards.reply_kb import skip_kb, add_more_kb, main_menu_kb
+from bot.keyboards.reply_kb import skip_kb, add_more_kb, main_menu_kb, cv_language_kb
 from bot.database.engine import get_session
 from bot.database.crud import (
     update_user_field,
@@ -33,9 +33,34 @@ def _is_skip(message: Message) -> bool:
 @router.message(F.text == "إنشاء سيرة ذاتية")
 async def start_cv(message: Message, state: FSMContext) -> None:
     await state.clear()
+    await state.set_state(CVForm.cv_language)
+    await message.answer(
+        "اختر لغة السيرة الذاتية:\nChoose CV language:",
+        reply_markup=cv_language_kb(),
+    )
+
+
+@router.message(CVForm.cv_language)
+async def process_cv_language(message: Message, state: FSMContext) -> None:
+    text = message.text.strip()
+    if "English" in text:
+        lang = "en"
+    elif "العربية" in text:
+        lang = "ar"
+    else:
+        await message.answer(
+            "اختر لغة السيرة الذاتية:\nChoose CV language:",
+            reply_markup=cv_language_kb(),
+        )
+        return
+    async with await get_session() as session:
+        await update_user_field(session, message.from_user.id, "cv_language", lang)
+    await state.update_data(cv_language=lang)
     await state.set_state(CVForm.full_name)
     await message.answer(
-        "ما هو اسمك الكامل؟\n(يمكنك الضغط على 'تخطي' لأي خطوة)",
+        "ما هو اسمك الكامل؟\n(يمكنك الضغط على 'تخطي' لأي خطوة)"
+        if lang == "ar" else
+        "What is your full name?\n(You can press 'تخطي' to skip any step)",
         reply_markup=skip_kb(),
     )
 

@@ -2,6 +2,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class CVForm(StatesGroup):
+    cv_language = State()
     full_name = State()
     job_title = State()
     phone = State()
