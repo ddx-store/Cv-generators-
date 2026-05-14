@@ -29,6 +29,7 @@ class User(Base):
     educations = relationship("Education", back_populates="user", cascade="all, delete-orphan")
     courses = relationship("Course", back_populates="user", cascade="all, delete-orphan")
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+    saved_cvs = relationship("SavedCV", back_populates="user", cascade="all, delete-orphan")
 
 
 class Experience(Base):
@@ -79,3 +80,15 @@ class Project(Base):
     link = Column(String(500), nullable=True)
 
     user = relationship("User", back_populates="projects")
+
+
+class SavedCV(Base):
+    __tablename__ = "saved_cvs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    profile_name = Column(String(255), nullable=False)
+    data_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="saved_cvs")

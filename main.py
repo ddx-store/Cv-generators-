@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 
 from bot.config import BOT_TOKEN, logger
 from bot.database.engine import init_db
-from bot.handlers import start, cv_collect, preview, edit, pdf_handler
+from bot.handlers import start, cv_collect, preview, edit, pdf_handler, saved_cvs
 
 
 async def main() -> None:
@@ -29,6 +29,7 @@ async def main() -> None:
     dp.include_router(preview.router)
     dp.include_router(edit.router)
     dp.include_router(pdf_handler.router)
+    dp.include_router(saved_cvs.router)
 
     logger.info("Bot is starting...")
     await dp.start_polling(bot)

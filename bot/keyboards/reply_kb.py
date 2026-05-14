@@ -6,7 +6,8 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="إنشاء سيرة ذاتية")],
             [KeyboardButton(text="تعديل البيانات"), KeyboardButton(text="معاينة البيانات")],
-            [KeyboardButton(text="إنشاء PDF"), KeyboardButton(text="المساعدة")],
+            [KeyboardButton(text="إنشاء PDF"), KeyboardButton(text="سيرتي المحفوظة")],
+            [KeyboardButton(text="المساعدة")],
         ],
         resize_keyboard=True,
     )
@@ -24,7 +25,10 @@ def cv_language_kb() -> ReplyKeyboardMarkup:
 
 def skip_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="تخطي")]],
+        keyboard=[
+            [KeyboardButton(text="تخطي")],
+            [KeyboardButton(text="إلغاء")],
+        ],
         resize_keyboard=True,
         one_time_keyboard=True,
     )
@@ -35,6 +39,7 @@ def add_more_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="إضافة المزيد")],
             [KeyboardButton(text="الانتقال للخطوة التالية")],
+            [KeyboardButton(text="إلغاء")],
         ],
         resize_keyboard=True,
         one_time_keyboard=True,
