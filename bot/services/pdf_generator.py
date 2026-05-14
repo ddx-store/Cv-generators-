@@ -2,6 +2,8 @@ import os
 import tempfile
 from pathlib import Path
 
+import arabic_reshaper
+from bidi.algorithm import get_display
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.styles import ParagraphStyle
@@ -113,17 +115,23 @@ def _add_section_header(elements: list, title: str, styles: dict) -> None:
     elements.append(Spacer(1, 0.2 * cm))
     elements.append(HRFlowable(width="100%", thickness=1, color=LINE_COLOR))
     elements.append(Spacer(1, 0.15 * cm))
-    elements.append(Paragraph(title, styles["section_title"]))
+    elements.append(Paragraph(_reshape_arabic(title), styles["section_title"]))
+
+
+def _reshape_arabic(text: str) -> str:
+    reshaped = arabic_reshaper.reshape(text)
+    return get_display(reshaped)
 
 
 def _escape(text: str | None) -> str:
     if not text:
         return ""
-    return (
+    escaped = (
         text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
     )
+    return _reshape_arabic(escaped)
 
 
 async def generate_cv_pdf(user: User) -> str | None:
