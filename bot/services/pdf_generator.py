@@ -1,15 +1,18 @@
 import os
+import re
 import tempfile
 from pathlib import Path
 
 import arabic_reshaper
 from bidi.algorithm import get_display
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
+from reportlab.lib.units import cm, mm
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.enums import TA_RIGHT, TA_LEFT
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
-from reportlab.lib.colors import HexColor
+from reportlab.lib.enums import TA_RIGHT, TA_CENTER
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle,
+)
+from reportlab.lib.colors import HexColor, Color
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
@@ -19,11 +22,21 @@ from bot.utils.text_helpers import generate_summary
 
 FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
 
-HEADER_COLOR = HexColor("#1a1a2e")
-SECTION_COLOR = HexColor("#16213e")
-TEXT_COLOR = HexColor("#333333")
-ACCENT_COLOR = HexColor("#0f3460")
-LINE_COLOR = HexColor("#cccccc")
+# Color palette
+PRIMARY = HexColor("#1a1a2e")
+SECONDARY = HexColor("#16213e")
+TEXT_DARK = HexColor("#2c2c2c")
+TEXT_MEDIUM = HexColor("#555555")
+TEXT_LIGHT = HexColor("#777777")
+ACCENT = HexColor("#0f3460")
+LINE_COLOR = HexColor("#d0d0d0")
+BG_HEADER = HexColor("#f5f5f5")
+
+_ARABIC_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]")
+
+
+def _has_arabic(text: str) -> bool:
+    return bool(_ARABIC_RE.search(text))
 
 
 def _register_fonts() -> str:
@@ -48,77 +61,89 @@ def _register_fonts() -> str:
 
 def _get_styles(font_name: str) -> dict:
     bold_font = "ArabicBold" if font_name == "Arabic" else "Helvetica-Bold"
-    alignment = TA_RIGHT if font_name == "Arabic" else TA_LEFT
 
     return {
         "name": ParagraphStyle(
             "Name",
             fontName=bold_font,
-            fontSize=18,
-            textColor=HEADER_COLOR,
-            alignment=alignment,
-            spaceAfter=4,
-            wordWrap="RTL" if font_name == "Arabic" else "LTR",
+            fontSize=20,
+            textColor=PRIMARY,
+            alignment=TA_CENTER,
+            spaceAfter=2,
+            leading=26,
         ),
         "job_title": ParagraphStyle(
             "JobTitle",
             fontName=font_name,
-            fontSize=13,
-            textColor=ACCENT_COLOR,
-            alignment=alignment,
-            spaceAfter=6,
-            wordWrap="RTL" if font_name == "Arabic" else "LTR",
+            fontSize=12,
+            textColor=ACCENT,
+            alignment=TA_CENTER,
+            spaceAfter=4,
+            leading=16,
         ),
         "contact": ParagraphStyle(
             "Contact",
             fontName=font_name,
             fontSize=9,
-            textColor=TEXT_COLOR,
-            alignment=alignment,
+            textColor=TEXT_MEDIUM,
+            alignment=TA_CENTER,
             spaceAfter=2,
-            wordWrap="RTL" if font_name == "Arabic" else "LTR",
+            leading=13,
         ),
         "section_title": ParagraphStyle(
             "SectionTitle",
             fontName=bold_font,
             fontSize=13,
-            textColor=SECTION_COLOR,
-            alignment=alignment,
-            spaceBefore=10,
-            spaceAfter=4,
-            wordWrap="RTL" if font_name == "Arabic" else "LTR",
+            textColor=PRIMARY,
+            alignment=TA_RIGHT,
+            spaceBefore=0,
+            spaceAfter=6,
+            leading=18,
         ),
         "body": ParagraphStyle(
             "Body",
             fontName=font_name,
             fontSize=10,
-            textColor=TEXT_COLOR,
-            alignment=alignment,
-            spaceAfter=3,
-            leading=14,
-            wordWrap="RTL" if font_name == "Arabic" else "LTR",
+            textColor=TEXT_DARK,
+            alignment=TA_RIGHT,
+            spaceAfter=4,
+            leading=16,
         ),
         "body_bold": ParagraphStyle(
             "BodyBold",
             fontName=bold_font,
             fontSize=10,
-            textColor=TEXT_COLOR,
-            alignment=alignment,
+            textColor=TEXT_DARK,
+            alignment=TA_RIGHT,
             spaceAfter=2,
-            leading=14,
-            wordWrap="RTL" if font_name == "Arabic" else "LTR",
+            leading=16,
+        ),
+        "body_light": ParagraphStyle(
+            "BodyLight",
+            fontName=font_name,
+            fontSize=9,
+            textColor=TEXT_LIGHT,
+            alignment=TA_RIGHT,
+            spaceAfter=2,
+            leading=13,
+        ),
+        "bullet": ParagraphStyle(
+            "Bullet",
+            fontName=font_name,
+            fontSize=10,
+            textColor=TEXT_DARK,
+            alignment=TA_RIGHT,
+            spaceAfter=2,
+            leading=15,
+            leftIndent=15,
+            rightIndent=15,
         ),
     }
 
 
-def _add_section_header(elements: list, title: str, styles: dict) -> None:
-    elements.append(Spacer(1, 0.2 * cm))
-    elements.append(HRFlowable(width="100%", thickness=1, color=LINE_COLOR))
-    elements.append(Spacer(1, 0.15 * cm))
-    elements.append(Paragraph(_reshape_arabic(title), styles["section_title"]))
-
-
 def _reshape_arabic(text: str) -> str:
+    if not _has_arabic(text):
+        return text
     reshaped = arabic_reshaper.reshape(text)
     return get_display(reshaped)
 
@@ -132,6 +157,13 @@ def _escape(text: str | None) -> str:
         .replace(">", "&gt;")
     )
     return _reshape_arabic(escaped)
+
+
+def _add_section_header(elements: list, title: str, styles: dict) -> None:
+    elements.append(Spacer(1, 8 * mm))
+    elements.append(HRFlowable(width="100%", thickness=1.2, color=ACCENT, spaceAfter=3))
+    elements.append(Paragraph(_reshape_arabic(title), styles["section_title"]))
+    elements.append(Spacer(1, 2 * mm))
 
 
 async def generate_cv_pdf(user: User) -> str | None:
@@ -149,30 +181,34 @@ async def generate_cv_pdf(user: User) -> str | None:
         doc = SimpleDocTemplate(
             filepath,
             pagesize=A4,
-            rightMargin=1.5 * cm,
-            leftMargin=1.5 * cm,
-            topMargin=1.5 * cm,
-            bottomMargin=1.5 * cm,
+            rightMargin=2 * cm,
+            leftMargin=2 * cm,
+            topMargin=1.8 * cm,
+            bottomMargin=1.8 * cm,
         )
 
         elements: list = []
 
-        # Header
+        # ── Header Section ──
         if user.full_name:
+            elements.append(Spacer(1, 2 * mm))
             elements.append(Paragraph(_escape(user.full_name), styles["name"]))
+
         if user.job_title:
             elements.append(Paragraph(_escape(user.job_title), styles["job_title"]))
 
-        # Contact info
+        elements.append(Spacer(1, 3 * mm))
+
+        # Contact info (centered, single line with separators)
         contact_parts = []
         if user.phone:
             contact_parts.append(user.phone)
         if user.email:
             contact_parts.append(user.email)
         if user.city_country:
-            contact_parts.append(user.city_country)
+            contact_parts.append(_escape(user.city_country))
         if contact_parts:
-            elements.append(Paragraph(_escape(" | ".join(contact_parts)), styles["contact"]))
+            elements.append(Paragraph("  |  ".join(contact_parts), styles["contact"]))
 
         links = []
         if user.linkedin:
@@ -180,80 +216,109 @@ async def generate_cv_pdf(user: User) -> str | None:
         if user.portfolio:
             links.append(user.portfolio)
         if links:
-            elements.append(Paragraph(_escape(" | ".join(links)), styles["contact"]))
+            elements.append(Paragraph("  |  ".join(links), styles["contact"]))
 
-        # Professional Summary
+        elements.append(Spacer(1, 4 * mm))
+        elements.append(HRFlowable(width="100%", thickness=2, color=PRIMARY, spaceAfter=2))
+
+        # ── Professional Summary ──
         summary = user.summary or generate_summary(user)
         if summary:
             _add_section_header(elements, "الملخص المهني", styles)
             elements.append(Paragraph(_escape(summary), styles["body"]))
 
-        # Work Experience
+        # ── Work Experience ──
         if user.experiences:
             _add_section_header(elements, "الخبرات العملية", styles)
-            for exp in user.experiences:
+            for i, exp in enumerate(user.experiences):
                 end = exp.end_date or "حتى الآن"
                 elements.append(
                     Paragraph(
-                        _escape(f"{exp.title} - {exp.company}"),
+                        _escape(f"{exp.title}  —  {exp.company}"),
                         styles["body_bold"],
                     )
                 )
                 elements.append(
                     Paragraph(
-                        _escape(f"{exp.start_date} - {end}"),
-                        styles["body"],
+                        _escape(f"{exp.start_date}  —  {end}"),
+                        styles["body_light"],
                     )
                 )
                 if exp.responsibilities:
+                    elements.append(Spacer(1, 1.5 * mm))
                     for line in exp.responsibilities.split("\n"):
                         line = line.strip()
                         if line:
-                            elements.append(Paragraph(_escape(f"- {line}"), styles["body"]))
-                elements.append(Spacer(1, 0.15 * cm))
+                            elements.append(
+                                Paragraph(
+                                    _escape(f"\u2022  {line}"),
+                                    styles["bullet"],
+                                )
+                            )
+                if i < len(user.experiences) - 1:
+                    elements.append(Spacer(1, 5 * mm))
 
-        # Education
+        # ── Education ──
         if user.educations:
             _add_section_header(elements, "التعليم", styles)
-            for edu in user.educations:
-                year = f" ({edu.graduation_year})" if edu.graduation_year else ""
+            for i, edu in enumerate(user.educations):
                 elements.append(
                     Paragraph(
-                        _escape(f"{edu.degree} - {edu.institution}{year}"),
-                        styles["body"],
+                        _escape(f"{edu.degree}  —  {edu.institution}"),
+                        styles["body_bold"],
                     )
                 )
+                if edu.graduation_year:
+                    elements.append(
+                        Paragraph(
+                            _escape(edu.graduation_year),
+                            styles["body_light"],
+                        )
+                    )
+                if i < len(user.educations) - 1:
+                    elements.append(Spacer(1, 3 * mm))
 
-        # Skills
+        # ── Skills ──
         if user.skills:
             _add_section_header(elements, "المهارات", styles)
             elements.append(Paragraph(_escape(user.skills), styles["body"]))
 
-        # Languages
+        # ── Languages ──
         if user.languages:
             _add_section_header(elements, "اللغات", styles)
             elements.append(Paragraph(_escape(user.languages), styles["body"]))
 
-        # Courses
+        # ── Courses & Certifications ──
         if user.courses:
             _add_section_header(elements, "الدورات والشهادات", styles)
-            for c in user.courses:
-                provider = f" - {c.provider}" if c.provider else ""
-                year = f" ({c.year})" if c.year else ""
+            for i, c in enumerate(user.courses):
+                parts = [c.name]
+                if c.provider:
+                    parts.append(c.provider)
                 elements.append(
-                    Paragraph(_escape(f"{c.name}{provider}{year}"), styles["body"])
+                    Paragraph(
+                        _escape("  —  ".join(parts)),
+                        styles["body_bold"],
+                    )
                 )
+                if c.year:
+                    elements.append(
+                        Paragraph(_escape(c.year), styles["body_light"])
+                    )
+                if i < len(user.courses) - 1:
+                    elements.append(Spacer(1, 2 * mm))
 
-        # Projects
+        # ── Projects ──
         if user.projects:
             _add_section_header(elements, "المشاريع", styles)
-            for p in user.projects:
+            for i, p in enumerate(user.projects):
                 elements.append(Paragraph(_escape(p.name), styles["body_bold"]))
                 if p.description:
                     elements.append(Paragraph(_escape(p.description), styles["body"]))
                 if p.link:
-                    elements.append(Paragraph(_escape(p.link), styles["body"]))
-                elements.append(Spacer(1, 0.1 * cm))
+                    elements.append(Paragraph(p.link, styles["body_light"]))
+                if i < len(user.projects) - 1:
+                    elements.append(Spacer(1, 3 * mm))
 
         doc.build(elements)
         logger.info("PDF generated: %s", filepath)
