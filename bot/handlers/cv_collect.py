@@ -457,6 +457,11 @@ async def next_after_exp(message: Message, state: FSMContext) -> None:
     await _go_to_education(message, state)
 
 
+@router.message(CVForm.exp_add_more)
+async def exp_add_more_fallback(message: Message, state: FSMContext) -> None:
+    await message.answer("اختر 'إضافة المزيد' أو 'الانتقال للخطوة التالية' أو 'إلغاء'", reply_markup=add_more_kb())
+
+
 async def _go_to_education(message: Message, state: FSMContext) -> None:
     await state.set_state(CVForm.edu_degree)
     async with await get_session() as session:
@@ -534,6 +539,11 @@ async def add_more_edu(message: Message, state: FSMContext) -> None:
 @router.message(CVForm.edu_add_more, F.text == "الانتقال للخطوة التالية")
 async def next_after_edu(message: Message, state: FSMContext) -> None:
     await _go_to_skills(message, state)
+
+
+@router.message(CVForm.edu_add_more)
+async def edu_add_more_fallback(message: Message, state: FSMContext) -> None:
+    await message.answer("اختر 'إضافة المزيد' أو 'الانتقال للخطوة التالية' أو 'إلغاء'", reply_markup=add_more_kb())
 
 
 async def _go_to_skills(message: Message, state: FSMContext) -> None:
@@ -654,6 +664,11 @@ async def next_after_courses(message: Message, state: FSMContext) -> None:
     await _go_to_projects(message, state)
 
 
+@router.message(CVForm.course_add_more)
+async def course_add_more_fallback(message: Message, state: FSMContext) -> None:
+    await message.answer("اختر 'إضافة المزيد' أو 'الانتقال للخطوة التالية' أو 'إلغاء'", reply_markup=add_more_kb())
+
+
 async def _go_to_projects(message: Message, state: FSMContext) -> None:
     await state.set_state(CVForm.project_name)
     async with await get_session() as session:
@@ -728,6 +743,11 @@ async def add_more_project(message: Message, state: FSMContext) -> None:
 @router.message(CVForm.project_add_more, F.text == "الانتقال للخطوة التالية")
 async def next_after_projects(message: Message, state: FSMContext) -> None:
     await _finish_collection(message, state)
+
+
+@router.message(CVForm.project_add_more)
+async def project_add_more_fallback(message: Message, state: FSMContext) -> None:
+    await message.answer("اختر 'إضافة المزيد' أو 'الانتقال للخطوة التالية' أو 'إلغاء'", reply_markup=add_more_kb())
 
 
 async def _finish_collection(message: Message, state: FSMContext) -> None:
